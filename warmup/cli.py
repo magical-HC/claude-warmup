@@ -7,6 +7,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from warmup.config import Config, default_config_toml, load_config
+from warmup.wintz import windows_key_to_iana
 from warmup.logreader import read_activity
 from warmup.monitor import run_monitor
 from warmup.scheduler import Scheduler, SchedulerError
@@ -24,19 +25,55 @@ def _claude_dir() -> Path:
     return Path.home() / ".claude"
 
 
-def _resolve_tz(config) -> ZoneInfo:
-    if config.timezone:
-        return ZoneInfo(config.timezone)
-    name = datetime.now().astimezone().tzname()
+def _iana_from_local_str() -> ZoneInfo | None:
+    """Try to build a ZoneInfo directly from the local tzinfo string (works on POSIX
+    where str(tzinfo) is already an IANA name like 'Asia/Shanghai')."""
     try:
         return ZoneInfo(str(datetime.now().astimezone().tzinfo))
     except Exception:
-        print(
-            f"WARNING: could not resolve local timezone '{name}'; falling back to UTC. "
-            "Set `timezone` in config.toml to an IANA name (e.g. \"Asia/Shanghai\").",
-            file=sys.stderr,
+        return None
+
+
+def _windows_tz_key() -> str | None:
+    """Read the English Windows timezone key from the registry (always English
+    regardless of display locale, e.g. 'China Standard Time')."""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SYSTEM\CurrentControlSet\Control\TimeZoneInformation",
         )
-        return ZoneInfo("UTC")
+        name = winreg.QueryValueEx(key, "TimeZoneKeyName")[0]
+        winreg.CloseKey(key)
+        return name
+    except Exception:
+        return None
+
+
+def _resolve_tz(config) -> ZoneInfo:
+    if config.timezone:
+        return ZoneInfo(config.timezone)
+
+    # Works on POSIX (Linux/Mac) where str(tzinfo) is already an IANA name.
+    tz = _iana_from_local_str()
+    if tz is not None:
+        return tz
+
+    # Windows: registry key is always the English name regardless of display locale.
+    win_key = _windows_tz_key()
+    if win_key:
+        iana = windows_key_to_iana(win_key)
+        if iana:
+            return ZoneInfo(iana)
+
+    # Last resort: warn and fall back to UTC.
+    name = datetime.now().astimezone().tzname()
+    print(
+        f"WARNING: could not resolve local timezone '{name}'; falling back to UTC. "
+        'Set `timezone` in config.toml to an IANA name (e.g. "Asia/Shanghai").',
+        file=sys.stderr,
+    )
+    return ZoneInfo("UTC")
 
 
 def _fmt(dt: datetime | None, tz: ZoneInfo) -> str:

@@ -33,6 +33,43 @@ def test_home_before_subcommand_is_respected(tmp_path: Path):
     assert (tmp_path / "config.toml").exists()
 
 
+def test_resolve_tz_falls_back_via_windows_registry(monkeypatch):
+    """When str(tzinfo) isn't a valid IANA name (any non-English Windows locale),
+    _resolve_tz must auto-resolve via the Windows registry + CLDR map — no warning,
+    no UTC fallback."""
+    import warmup.cli as cli
+    from zoneinfo import ZoneInfo
+    from warmup.config import Config, PeakRule
+
+    cfg = Config(
+        enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",
+        model="haiku", dry_run=False, monitor_interval_minutes=15,
+        peaks=(), timezone="",
+    )
+    # Simulate a zh-CN Windows: str(tzinfo) returns a localized name that ZoneInfo
+    # can't parse, but the registry key is always the English "China Standard Time".
+    monkeypatch.setattr(cli, "_windows_tz_key", lambda: "China Standard Time")
+    monkeypatch.setattr(cli, "_iana_from_local_str", lambda: None)  # simulate IANA parse failure
+    assert cli._resolve_tz(cfg) == ZoneInfo("Asia/Shanghai")
+
+
+def test_resolve_tz_warns_and_falls_back_to_utc_only_when_unresolvable(monkeypatch, capsys):
+    import warmup.cli as cli
+    from zoneinfo import ZoneInfo
+    from warmup.config import Config
+
+    cfg = Config(
+        enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",
+        model="haiku", dry_run=False, monitor_interval_minutes=15,
+        peaks=(), timezone="",
+    )
+    monkeypatch.setattr(cli, "_iana_from_local_str", lambda: None)
+    monkeypatch.setattr(cli, "_windows_tz_key", lambda: None)   # registry also unavailable
+    result = cli._resolve_tz(cfg)
+    assert result == ZoneInfo("UTC")
+    assert "WARNING" in capsys.readouterr().err
+
+
 def test_resolve_tz_uses_config_timezone():
     from zoneinfo import ZoneInfo
     from warmup.cli import _resolve_tz
