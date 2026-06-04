@@ -78,7 +78,7 @@ def _resolve_tz(config) -> ZoneInfo:
 
 def _fmt(dt: datetime | None, tz: ZoneInfo) -> str:
     if dt is None:
-        return "—"
+        return "(none)"
     return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M %Z")
 
 
