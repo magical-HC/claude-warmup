@@ -17,7 +17,7 @@ def _covered_hours(config: Config) -> set[int]:
     hours: set[int] = set()
     for rule in config.peaks:
         start = _parse_hhmm(rule.start).hour
-        end = _parse_hhmm(rule.end).hour
+        end = 24 if rule.end == "24:00" else _parse_hhmm(rule.end).hour
         for h in range(start, end):
             hours.add(h)
     return hours

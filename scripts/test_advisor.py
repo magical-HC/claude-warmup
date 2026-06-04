@@ -17,6 +17,20 @@ def test_top_usage_hours_ranks_by_tokens():
     assert top == [15, 9]  # 500 then 150
 
 
+def test_peak_suggestions_handles_end_24():
+    cfg = Config(
+        enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",
+        model="haiku", dry_run=False, monitor_interval_minutes=15,
+        peaks=(PeakRule(days=("Mon",), start="19:00", end="24:00"),),
+    )
+    # Hours 19-23 are covered; hour 9 is not.
+    records = [_rec(9, 1000), _rec(21, 100)]
+    msgs = peak_suggestions(records, cfg, UTC)
+    assert any("09:00" in m for m in msgs)
+    # 21:00 is inside the peak (19-24), so no suggestion for it
+    assert not any("21:00" in m for m in msgs)
+
+
 def test_peak_suggestions_flags_uncovered_hot_hour():
     cfg = Config(
         enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",

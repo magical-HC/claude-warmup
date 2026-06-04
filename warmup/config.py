@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -63,7 +63,10 @@ def peaks_for_date(config: Config, d: date, tz: ZoneInfo) -> list[tuple[datetime
         if not any(WEEKDAYS[day] == d.weekday() for day in rule.days):
             continue
         start = datetime.combine(d, _parse_hhmm(rule.start), tzinfo=tz)
-        end = datetime.combine(d, _parse_hhmm(rule.end), tzinfo=tz)
+        if rule.end == "24:00":
+            end = datetime.combine(d + timedelta(days=1), time(0, 0), tzinfo=tz)
+        else:
+            end = datetime.combine(d, _parse_hhmm(rule.end), tzinfo=tz)
         out.append((start, end))
     return sorted(out)
 
