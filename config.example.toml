@@ -1,0 +1,25 @@
+[warmup]
+enabled        = true
+offset_hours   = 2.5
+band_minutes   = 15
+warmup_prompt  = "ping"
+model          = "haiku"
+dry_run        = false
+
+[monitor]
+interval_minutes = 15
+
+[[peak]]
+days  = ["Mon","Tue","Wed","Thu","Fri"]
+start = "09:00"
+end   = "11:00"
+
+[[peak]]
+days  = ["Mon","Tue","Wed","Thu","Fri"]
+start = "14:00"
+end   = "17:00"
+
+[[peak]]
+days  = ["Mon","Tue","Wed","Thu","Fri"]
+start = "20:00"
+end   = "23:00"
