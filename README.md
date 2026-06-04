@@ -15,10 +15,12 @@ A `monitor` task runs every 15 minutes (local-only, no API call), reads your
 session logs to see the live window state, and schedules/cancels a one-shot
 `ping` task accordingly. Only `ping` calls the API.
 
-## Setup (Windows)
+## Setup
 
-Clone the repo and run the setup script once — it installs the package, creates
-the default config, and registers the background monitor task:
+Clone the repo, then run the setup script for your platform. It installs the
+package, creates the default config, and registers the background monitor task.
+
+### Windows
 
 ```powershell
 git clone https://github.com/magical-HC/claude-warmup.git
@@ -26,10 +28,29 @@ cd claude-warmup
 powershell -ExecutionPolicy Bypass -File setup.ps1
 ```
 
-Then edit `~/.claude-warmup/config.toml` to set your peak hours and timezone:
+The script registers a **Windows Task Scheduler** task (`ClaudeWarmup-Monitor`)
+that runs every 15 minutes.
+
+### Mac / Linux
+
+```bash
+git clone https://github.com/magical-HC/claude-warmup.git
+cd claude-warmup
+bash setup.sh
+```
+
+The script adds a **cron job** (`*/15 * * * *`) to your personal crontab.
+Requires Python 3.11+. On Mac, install it via [Homebrew](https://brew.sh):
+`brew install python`.
+
+---
+
+After setup, edit `~/.claude-warmup/config.toml` to set your peak hours and
+timezone, then check it's working:
 
 ```toml
-timezone = "Asia/Shanghai"   # your IANA zone (required on non-English Windows)
+timezone = "Asia/Shanghai"   # your IANA zone
+                             # required on non-English Windows; auto-detected on Mac/Linux
 
 [[peak]]
 days  = ["Mon","Tue","Wed","Thu","Fri"]
@@ -37,23 +58,23 @@ start = "19:00"
 end   = "01:00"   # cross-midnight: end < start means next day
 ```
 
-Check it's working:
-
-```powershell
+```bash
 warmup status   # live window state + next scheduled warmup
 warmup advise   # suggestions based on your usage history
 ```
 
-**To update later:** `git pull` then re-run `setup.ps1` (idempotent — won't
+**To update later:** `git pull` then re-run the setup script (idempotent — won't
 overwrite your config or duplicate the task).
 
 ## Commands
 
 - `warmup init` — create default config.
+- `warmup status` — live window state, monitor status, next/last warmup.
+- `warmup advise` — suggest peak-time config changes from usage history.
+- `warmup pause` — disable the monitor (cancels the scheduled ping).
+- `warmup resume` — re-enable the monitor and immediately reschedule.
 - `warmup monitor` — recompute and (un)schedule the next warmup. Run by the 15-min task.
 - `warmup ping` — send the warmup now (skips if a block is already active). Run by the one-shot task.
-- `warmup status` — show live window state and last/next warmup.
-- `warmup advise` — suggest peak-time config changes from usage history.
 
 ## Config
 
