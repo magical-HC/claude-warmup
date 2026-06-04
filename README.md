@@ -18,6 +18,9 @@ session logs to see the live window state, and schedules/cancels a one-shot
 ## Setup (Windows)
 
 1. `python -m warmup init` — writes `~/.claude-warmup/config.toml`. Edit your peak hours.
+   **On non-US-English Windows, set `timezone` to your IANA zone** (e.g.
+   `timezone = "Asia/Shanghai"`). Otherwise the tool can't parse the localized
+   Windows timezone name and falls back to UTC, putting your peaks at the wrong hours.
 2. Register the recurring monitor (run once, in PowerShell):
 
    ```powershell
@@ -39,4 +42,6 @@ session logs to see the live window state, and schedules/cancels a one-shot
 
 See `config.example.toml`. `offset_hours` controls how far into peak the reset
 lands (default 2.5). `band_minutes` is the tolerance for skipping a redundant
-warmup (default 15).
+warmup (default 15). `timezone` is an IANA zone name (e.g. `"Asia/Shanghai"`);
+leave it empty only if your system locale is US-English, otherwise set it
+explicitly so peak hours resolve correctly.
