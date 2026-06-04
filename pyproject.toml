@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Pre-warm the Claude 5-hour usage window before peak hours"
 requires-python = ">=3.11"
 
+[project.scripts]
+warmup = "warmup.cli:main"
+
 [tool.setuptools]
 packages = ["warmup"]
 

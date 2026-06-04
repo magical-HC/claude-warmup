@@ -40,8 +40,8 @@ end   = "01:00"   # cross-midnight: end < start means next day
 Check it's working:
 
 ```powershell
-python -m warmup status   # live window state + next scheduled warmup
-python -m warmup advise   # suggestions based on your usage history
+warmup status   # live window state + next scheduled warmup
+warmup advise   # suggestions based on your usage history
 ```
 
 **To update later:** `git pull` then re-run `scripts\setup.ps1` (idempotent — won't

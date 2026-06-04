@@ -30,12 +30,18 @@ if ($LASTEXITCODE -ne 0) { Fail "pip install failed." }
 $ver = python -c "import warmup; print(warmup.__version__)"
 Ok "claude-warmup $ver installed"
 
+# Locate the warmup.exe installed by pip into the Python Scripts directory.
+# Task Scheduler does not inherit the user's PATH, so we need the full path.
+$warmupExe = python -c "import sys, pathlib; print(pathlib.Path(sys.executable).parent / 'Scripts' / 'warmup.exe')"
+if (-not (Test-Path $warmupExe)) { Fail "warmup.exe not found at $warmupExe — pip install may have failed." }
+Ok "warmup command at $warmupExe"
+
 # ── 3. Create default config ──────────────────────────────────────────────────
 Step "Initialising config"
 if ($WarmupHome -ne "") {
-    python -m warmup init --home $WarmupHome
+    & $warmupExe init --home $WarmupHome
 } else {
-    python -m warmup init
+    & $warmupExe init
 }
 if ($LASTEXITCODE -ne 0) { Fail "warmup init failed." }
 
@@ -45,14 +51,14 @@ Ok "Config at $cfgPath"
 
 # ── 4. Register recurring monitor task ───────────────────────────────────────
 Step "Registering ClaudeWarmup-Monitor (every 15 min)"
-$py = python -c "import sys; print(sys.executable)"
-$result = schtasks /Create /TN ClaudeWarmup-Monitor /TR "$py -m warmup monitor" /SC MINUTE /MO 15 /F 2>&1
+$taskCmd = if ($WarmupHome -ne "") { "`"$warmupExe`" monitor --home `"$WarmupHome`"" } `
+           else { "`"$warmupExe`" monitor" }
+$result = schtasks /Create /TN ClaudeWarmup-Monitor /TR $taskCmd /SC MINUTE /MO 15 /F 2>&1
 if ($LASTEXITCODE -ne 0) {
     Warn "Could not register task: $result"
     Warn "Try re-running this script as Administrator."
 } else {
     Ok "Task registered"
-    # trigger once immediately so state.json is populated
     schtasks /Run /TN ClaudeWarmup-Monitor | Out-Null
     Start-Sleep -Seconds 4
     $lr = (schtasks /Query /TN ClaudeWarmup-Monitor /FO LIST /V 2>&1 | Select-String "Last Result").Line
@@ -71,7 +77,7 @@ Write-Host "       timezone = `"Asia/Shanghai`"   # your IANA zone"
 Write-Host "       start = `"19:00`"  end = `"01:00`"  # cross-midnight ok"
 Write-Host ""
 Write-Host "  2. Check live window state:"
-Write-Host "       python -m warmup status"
+Write-Host "       warmup status"
 Write-Host ""
 Write-Host "  3. Get suggestions based on your usage history:"
-Write-Host "       python -m warmup advise"
+Write-Host "       warmup advise"
