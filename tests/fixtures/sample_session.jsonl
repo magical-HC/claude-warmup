@@ -1,0 +1,4 @@
+{"type":"assistant","timestamp":"2026-06-01T18:00:00.000Z","message":{"model":"claude-haiku-4-5","usage":{"input_tokens":100,"output_tokens":50}}}
+{"type":"assistant","timestamp":"2026-06-01T18:30:00.000Z","message":{"model":"claude-opus-4-8","usage":{"input_tokens":200,"output_tokens":80}}}
+{"type":"user","timestamp":"2026-06-01T18:31:00.000Z","message":{"role":"user","content":"hi"}}
+{"type":"summary","summary":"no usage here"}
