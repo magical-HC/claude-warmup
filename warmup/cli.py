@@ -83,6 +83,32 @@ def _fmt(dt: datetime | None, tz: ZoneInfo) -> str:
     return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M %Z")
 
 
+def _delta(dt: datetime | None, now: datetime) -> str:
+    if dt is None:
+        return ""
+    secs = int((dt - now).total_seconds())
+    if secs < 0:
+        return " (past)"
+    h, rem = divmod(secs, 3600)
+    m = rem // 60
+    return f" (in {h}h {m:02d}m)" if h else f" (in {m}m)"
+
+
+_W = 48  # status box width
+
+
+def _row(label: str, value: str) -> str:
+    return f"  {label:<12}{value}"
+
+
+def _rule() -> str:
+    return "-" * _W
+
+
+def _header(title: str) -> str:
+    return f"{'=' * _W}\n  {title}\n{'=' * _W}"
+
+
 def _ping_scheduler() -> Scheduler:
     return Scheduler(command=sys.executable, arguments="-m warmup ping")
 
@@ -148,13 +174,45 @@ def cmd_ping(args) -> int:
     if window.active:
         msg = f"skipped: block active until {_fmt(window.ends_at, tz)}"
         print(msg)
-        save_state(home / "state.json", State(state.last_warmup, msg, state.next_warmup))
+        save_state(home / "state.json", State(state.last_warmup, msg, state.next_warmup, state.paused))
         return 0
     result = send_warmup(cfg.warmup_prompt, cfg.model, cfg.dry_run)
     detail = "ok" if result.ok else f"failed: {result.detail}"
     print(f"warmup {detail}")
-    save_state(home / "state.json", State(now, detail, state.next_warmup))
+    save_state(home / "state.json", State(now, detail, state.next_warmup, state.paused))
     return 0 if result.ok else 1
+
+
+def cmd_pause(args) -> int:
+    home = _home(args)
+    state = load_state(home / "state.json")
+    if state.paused:
+        print("monitor is already paused  (run 'warmup resume' to re-enable)")
+        return 0
+    sched = _ping_scheduler()
+    sched.cancel_ping()
+    from dataclasses import replace as dc_replace
+    save_state(home / "state.json", dc_replace(state, paused=True, next_warmup=None))
+    append_log(home / "warmup.log", "paused   monitor disabled by user")
+    print("monitor paused  (run 'warmup resume' to re-enable)")
+    return 0
+
+
+def cmd_resume(args) -> int:
+    home = _home(args)
+    cfg = _load_or_none(home)
+    if cfg is None:
+        print("no config found; run `warmup init` first")
+        return 1
+    state = load_state(home / "state.json")
+    if not state.paused:
+        print("monitor is already running")
+        return 0
+    from dataclasses import replace as dc_replace
+    save_state(home / "state.json", dc_replace(state, paused=False))
+    append_log(home / "warmup.log", "resumed  monitor re-enabled by user")
+    print("monitor resumed, rescheduling...")
+    return cmd_monitor(args)
 
 
 def cmd_status(args) -> int:
@@ -168,16 +226,50 @@ def cmd_status(args) -> int:
     records = read_activity(_claude_dir())
     window = current_window(records, now)
     state = load_state(home / "state.json")
-    print(f"window active: {window.active}")
-    print(f"block anchor:  {_fmt(window.anchor, tz)}")
-    print(f"block ends:    {_fmt(window.ends_at, tz)}")
-    print(f"last warmup:   {_fmt(state.last_warmup, tz)} ({state.last_result})")
-    print(f"next warmup:   {_fmt(state.next_warmup, tz)}")
+
+    out: list[str] = [_header("claude-warmup"), ""]
+
+    # ── 5-hour window section ────────────────────────────────────────────────
+    out.append(_row("5h window", "ACTIVE" if window.active else "inactive"))
+    out.append(_row("  opened",  _fmt(window.anchor, tz)))
+    expires_str = _fmt(window.ends_at, tz)
+    if window.active:
+        expires_str += _delta(window.ends_at, now)
+    out.append(_row("  expires", expires_str))
+
+    out.append("")
+    out.append(_rule())
+    out.append("")
+
+    # ── monitor section ──────────────────────────────────────────────────────
+    monitor_status = "PAUSED" if state.paused else "RUNNING"
+    out.append(_row("monitor", monitor_status))
+    next_str = _fmt(state.next_warmup, tz)
+    if state.next_warmup and not state.paused:
+        next_str += _delta(state.next_warmup, now)
+    out.append(_row("  next ping", next_str))
+    last_str = _fmt(state.last_warmup, tz)
+    if state.last_result:
+        last_str += f"  [{state.last_result}]"
+    out.append(_row("  last ping", last_str))
+
+    # ── log section ──────────────────────────────────────────────────────────
     lines = read_log(home / "warmup.log", n=5)
     if lines:
-        print("\nrecent monitor log:")
+        out.append("")
+        out.append(_rule())
+        out.append("")
+        out.append("  recent log")
         for line in lines:
-            print(f"  {line}")
+            # trim timestamp to HH:MM for compactness
+            parts = line.split("  ", 1)
+            ts = parts[0][11:16] + "Z" if len(parts[0]) >= 16 else parts[0]
+            msg = parts[1] if len(parts) > 1 else ""
+            out.append(f"    {ts}  {msg}")
+
+    out.append("")
+    out.append("=" * _W)
+    print("\n".join(out))
     return 0
 
 
@@ -201,6 +293,7 @@ def build_parser() -> argparse.ArgumentParser:
     for name, fn in [
         ("init", cmd_init), ("monitor", cmd_monitor), ("ping", cmd_ping),
         ("status", cmd_status), ("advise", cmd_advise),
+        ("pause", cmd_pause), ("resume", cmd_resume),
     ]:
         sp = sub.add_parser(name)
         sp.add_argument("--home", default=argparse.SUPPRESS, help="config/state directory")

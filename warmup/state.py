@@ -11,6 +11,7 @@ class State:
     last_warmup: datetime | None
     last_result: str
     next_warmup: datetime | None
+    paused: bool = False
 
 
 def _iso(d: datetime | None) -> str | None:
@@ -29,6 +30,7 @@ def load_state(path: Path) -> State:
         last_warmup=_parse(data.get("last_warmup")),
         last_result=data.get("last_result", ""),
         next_warmup=_parse(data.get("next_warmup")),
+        paused=bool(data.get("paused", False)),
     )
 
 
@@ -39,6 +41,7 @@ def save_state(path: Path, state: State) -> None:
                 "last_warmup": _iso(state.last_warmup),
                 "last_result": state.last_result,
                 "next_warmup": _iso(state.next_warmup),
+                "paused": state.paused,
             },
             indent=2,
         ),

@@ -49,6 +49,15 @@ def test_monitor_idle_schedules_ping():
     assert state.next_warmup == datetime(2026, 6, 1, 11, 30, tzinfo=UTC)
 
 
+def test_monitor_paused_cancels_ping():
+    sched = FakeScheduler()
+    state = run_monitor(_config(), now=datetime(2026, 6, 1, 8, tzinfo=UTC),
+                        records=[], tz=UTC, scheduler=sched,
+                        state=State(None, "", None, paused=True))
+    assert sched.cancelled is True
+    assert state.next_warmup is None
+
+
 def test_monitor_no_plan_cancels_ping():
     sched = FakeScheduler()
     # now is after the only peak -> nothing to schedule today; next Monday is >1 day out

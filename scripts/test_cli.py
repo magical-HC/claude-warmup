@@ -167,6 +167,71 @@ def test_status_shows_recent_log(tmp_path: Path, monkeypatch, capsys):
     assert "monitor" in out.lower()
 
 
+def test_pause_sets_paused_in_state(tmp_path: Path, monkeypatch):
+    import warmup.cli as cli
+    main(["init", "--home", str(tmp_path)])
+    monkeypatch.setattr(cli, "_ping_scheduler", lambda: type("S", (), {
+        "cancel_ping": lambda self: None})())
+    rc = main(["pause", "--home", str(tmp_path)])
+    assert rc == 0
+    from warmup.state import load_state
+    assert load_state(tmp_path / "state.json").paused is True
+
+
+def test_resume_clears_paused_in_state(tmp_path: Path, monkeypatch):
+    import warmup.cli as cli
+    from warmup.state import State, save_state
+    main(["init", "--home", str(tmp_path)])
+    save_state(tmp_path / "state.json", State(None, "", None, paused=True))
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+    monkeypatch.setattr(cli, "_ping_scheduler", lambda: type("S", (), {
+        "register_ping": lambda self, t: None,
+        "cancel_ping": lambda self: None})())
+    rc = main(["resume", "--home", str(tmp_path)])
+    assert rc == 0
+    from warmup.state import load_state
+    assert load_state(tmp_path / "state.json").paused is False
+
+
+def test_status_shows_paused(tmp_path: Path, monkeypatch, capsys):
+    import warmup.cli as cli
+    from warmup.state import State, save_state
+    from warmup.window import WindowState
+    main(["init", "--home", str(tmp_path)])
+    save_state(tmp_path / "state.json", State(None, "", None, paused=True))
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+    monkeypatch.setattr(cli, "current_window",
+                        lambda *a, **k: WindowState(False, None, None))
+    main(["status", "--home", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "paused" in out.lower()
+
+
+def test_status_shows_running_when_not_paused(tmp_path: Path, monkeypatch, capsys):
+    import warmup.cli as cli
+    from warmup.window import WindowState
+    main(["init", "--home", str(tmp_path)])
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+    monkeypatch.setattr(cli, "current_window",
+                        lambda *a, **k: WindowState(False, None, None))
+    main(["status", "--home", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "running" in out.lower()
+
+
+def test_status_output_has_sections(tmp_path: Path, monkeypatch, capsys):
+    import warmup.cli as cli
+    from warmup.window import WindowState
+    main(["init", "--home", str(tmp_path)])
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+    monkeypatch.setattr(cli, "current_window",
+                        lambda *a, **k: WindowState(False, None, None))
+    main(["status", "--home", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "window" in out.lower()
+    assert "monitor" in out.lower()
+
+
 def test_cmd_monitor_reports_scheduler_error(tmp_path: Path, monkeypatch, capsys):
     # If schtasks registration fails, monitor must report it and return non-zero,
     # NOT silently claim success.

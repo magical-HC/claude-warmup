@@ -19,7 +19,7 @@ def run_monitor(
     scheduler,
     state: State,
 ) -> State:
-    if not config.enabled:
+    if not config.enabled or state.paused:
         scheduler.cancel_ping()
         return replace(state, next_warmup=None)
 
