@@ -23,7 +23,7 @@ the default config, and registers the background monitor task:
 ```powershell
 git clone https://github.com/magical-HC/claude-warmup.git
 cd claude-warmup
-powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+powershell -ExecutionPolicy Bypass -File setup.ps1
 ```
 
 Then edit `~/.claude-warmup/config.toml` to set your peak hours and timezone:
@@ -44,7 +44,7 @@ warmup status   # live window state + next scheduled warmup
 warmup advise   # suggestions based on your usage history
 ```
 
-**To update later:** `git pull` then re-run `scripts\setup.ps1` (idempotent — won't
+**To update later:** `git pull` then re-run `setup.ps1` (idempotent — won't
 overwrite your config or duplicate the task).
 
 ## Commands

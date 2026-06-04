@@ -1,6 +1,6 @@
 # setup.ps1 — one-time setup for claude-warmup
 # Run from the repo root after cloning:
-#   powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+#   powershell -ExecutionPolicy Bypass -File setup.ps1
 
 param(
     [string]$WarmupHome = ""    # override config/state dir (default: ~/.claude-warmup)

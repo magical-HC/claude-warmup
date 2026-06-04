@@ -15,4 +15,4 @@ warmup = "warmup.cli:main"
 packages = ["warmup"]
 
 [tool.pytest.ini_options]
-testpaths = ["scripts"]
+testpaths = ["scripts"]  # local only, not published
