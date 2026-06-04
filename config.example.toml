@@ -5,6 +5,7 @@ band_minutes   = 15
 warmup_prompt  = "ping"
 model          = "haiku"
 dry_run        = false
+timezone       = ""      # IANA name e.g. "Asia/Shanghai"; empty = system local
 
 [monitor]
 interval_minutes = 15

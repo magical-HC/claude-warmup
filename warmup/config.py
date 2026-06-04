@@ -26,6 +26,7 @@ class Config:
     dry_run: bool
     monitor_interval_minutes: int
     peaks: tuple[PeakRule, ...]
+    timezone: str = ""
 
 
 def load_config(path: Path) -> Config:
@@ -46,6 +47,7 @@ def load_config(path: Path) -> Config:
         dry_run=bool(w.get("dry_run", False)),
         monitor_interval_minutes=int(m.get("interval_minutes", 15)),
         peaks=peaks,
+        timezone=str(w.get("timezone", "")),
     )
 
 
@@ -74,6 +76,7 @@ band_minutes   = 15
 warmup_prompt  = "ping"
 model          = "haiku"
 dry_run        = false
+timezone       = ""      # IANA name e.g. "Asia/Shanghai"; empty = system local
 
 [monitor]
 interval_minutes = 15

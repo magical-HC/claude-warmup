@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from warmup.config import Config, WEEKDAYS, _parse_hhmm
+from warmup.config import Config, _parse_hhmm
 from warmup.logreader import ActivityRecord, hourly_histogram
 
 

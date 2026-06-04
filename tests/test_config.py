@@ -18,6 +18,14 @@ def test_load_config_parses_fields(tmp_path: Path):
     assert any("Mon" in r.days for r in cfg.peaks)
 
 
+def test_load_config_reads_timezone(tmp_path):
+    from pathlib import Path
+    p = tmp_path / "config.toml"
+    p.write_text(default_config_toml(), encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.timezone == ""
+
+
 def test_peaks_for_date_filters_by_weekday():
     cfg = Config(
         enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",

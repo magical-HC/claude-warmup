@@ -24,12 +24,18 @@ def _claude_dir() -> Path:
     return Path.home() / ".claude"
 
 
-def _local_tz() -> ZoneInfo:
-    # Use the system local timezone; fall back to UTC.
-    local = datetime.now().astimezone().tzinfo
+def _resolve_tz(config) -> ZoneInfo:
+    if config.timezone:
+        return ZoneInfo(config.timezone)
+    name = datetime.now().astimezone().tzname()
     try:
-        return ZoneInfo(str(local))
+        return ZoneInfo(str(datetime.now().astimezone().tzinfo))
     except Exception:
+        print(
+            f"WARNING: could not resolve local timezone '{name}'; falling back to UTC. "
+            "Set `timezone` in config.toml to an IANA name (e.g. \"Asia/Shanghai\").",
+            file=sys.stderr,
+        )
         return ZoneInfo("UTC")
 
 
@@ -65,7 +71,7 @@ def cmd_monitor(args) -> int:
     if cfg is None:
         print("no config found; run `warmup init` first")
         return 1
-    tz = _local_tz()
+    tz = _resolve_tz(cfg)
     now = datetime.now(timezone.utc)
     records = read_activity(_claude_dir())
     sched = Scheduler(command=_ping_command())
@@ -122,7 +128,7 @@ def cmd_advise(args) -> int:
     if cfg is None:
         print("no config found; run `warmup init` first")
         return 1
-    tz = _local_tz()
+    tz = _resolve_tz(cfg)
     records = read_activity(_claude_dir())
     for line in peak_suggestions(records, cfg, tz):
         print("- " + line)
@@ -138,7 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("status", cmd_status), ("advise", cmd_advise),
     ]:
         sp = sub.add_parser(name)
-        sp.add_argument("--home", help="config/state directory")
+        sp.add_argument("--home", default=argparse.SUPPRESS, help="config/state directory")
         sp.set_defaults(func=fn)
     return parser
 
