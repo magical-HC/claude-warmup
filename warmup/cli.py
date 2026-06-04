@@ -15,7 +15,7 @@ from warmup.sender import send_warmup, using_api_key
 from warmup.state import State, load_state, save_state
 from warmup.window import current_window
 from warmup.advisor import peak_suggestions
-from warmup.log import append_log, read_log
+from warmup.log import append_log
 
 
 def _home(args) -> Path:
@@ -252,20 +252,6 @@ def cmd_status(args) -> int:
     if state.last_result:
         last_str += f"  [{state.last_result}]"
     out.append(_row("  last ping", last_str))
-
-    # ── log section ──────────────────────────────────────────────────────────
-    lines = read_log(home / "warmup.log", n=5)
-    if lines:
-        out.append("")
-        out.append(_rule())
-        out.append("")
-        out.append("  recent log")
-        for line in lines:
-            # trim timestamp to HH:MM for compactness
-            parts = line.split("  ", 1)
-            ts = parts[0][11:16] + "Z" if len(parts[0]) >= 16 else parts[0]
-            msg = parts[1] if len(parts) > 1 else ""
-            out.append(f"    {ts}  {msg}")
 
     out.append("")
     out.append("=" * _W)

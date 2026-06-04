@@ -151,21 +151,6 @@ def test_monitor_writes_log(tmp_path: Path, monkeypatch, capsys):
     assert "monitor" in content.lower()
 
 
-def test_status_shows_recent_log(tmp_path: Path, monkeypatch, capsys):
-    import warmup.cli as cli
-    from warmup.window import WindowState
-    from warmup.log import append_log
-
-    main(["init", "--home", str(tmp_path)])
-    append_log(tmp_path / "warmup.log", "monitor  window=inactive  next=none")
-    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
-    monkeypatch.setattr(cli, "current_window",
-                        lambda *a, **k: WindowState(False, None, None))
-
-    main(["status", "--home", str(tmp_path)])
-    out = capsys.readouterr().out
-    assert "monitor" in out.lower()
-
 
 def test_pause_sets_paused_in_state(tmp_path: Path, monkeypatch):
     import warmup.cli as cli
