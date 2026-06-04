@@ -17,18 +17,35 @@ session logs to see the live window state, and schedules/cancels a one-shot
 
 ## Setup (Windows)
 
-1. `python -m warmup init` — writes `~/.claude-warmup/config.toml`. Edit your peak hours.
-   **On non-US-English Windows, set `timezone` to your IANA zone** (e.g.
-   `timezone = "Asia/Shanghai"`). Otherwise the tool can't parse the localized
-   Windows timezone name and falls back to UTC, putting your peaks at the wrong hours.
-2. Register the recurring monitor (run once, in PowerShell):
+Clone the repo and run the setup script once — it installs the package, creates
+the default config, and registers the background monitor task:
 
-   ```powershell
-   $cmd = '"' + (python -c "import sys;print(sys.executable)") + '" -m warmup monitor'
-   schtasks /Create /TN ClaudeWarmup-Monitor /TR $cmd /SC MINUTE /MO 15 /F
-   ```
-3. `python -m warmup status` — inspect live window state and the next warmup.
-4. `python -m warmup advise` — get peak-time suggestions from your usage history.
+```powershell
+git clone https://github.com/magical-HC/claude-warmup.git
+cd claude-warmup
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+```
+
+Then edit `~/.claude-warmup/config.toml` to set your peak hours and timezone:
+
+```toml
+timezone = "Asia/Shanghai"   # your IANA zone (required on non-English Windows)
+
+[[peak]]
+days  = ["Mon","Tue","Wed","Thu","Fri"]
+start = "19:00"
+end   = "01:00"   # cross-midnight: end < start means next day
+```
+
+Check it's working:
+
+```powershell
+python -m warmup status   # live window state + next scheduled warmup
+python -m warmup advise   # suggestions based on your usage history
+```
+
+**To update later:** `git pull` then re-run `scripts\setup.ps1` (idempotent — won't
+overwrite your config or duplicate the task).
 
 ## Commands
 
