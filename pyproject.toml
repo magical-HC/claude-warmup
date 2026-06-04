@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-warmup"
+version = "0.1.0"
+description = "Pre-warm the Claude 5-hour usage window before peak hours"
+requires-python = ">=3.11"
+
+[tool.setuptools]
+packages = ["warmup"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
