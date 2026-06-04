@@ -39,6 +39,12 @@ def _resolve_tz(config) -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
+def _fmt(dt: datetime | None, tz: ZoneInfo) -> str:
+    if dt is None:
+        return "—"
+    return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M %Z")
+
+
 def _ping_scheduler() -> Scheduler:
     return Scheduler(command=sys.executable, arguments="-m warmup ping")
 
@@ -82,7 +88,7 @@ def cmd_monitor(args) -> int:
         print(f"ERROR: failed to schedule warmup: {e}", file=sys.stderr)
         return 1
     save_state(home / "state.json", new_state)
-    print(f"next warmup: {new_state.next_warmup}")
+    print(f"next warmup: {_fmt(new_state.next_warmup, tz)}")
     return 0
 
 
@@ -92,12 +98,13 @@ def cmd_ping(args) -> int:
     if cfg is None:
         print("no config found; run `warmup init` first")
         return 1
+    tz = _resolve_tz(cfg)
     now = datetime.now(timezone.utc)
     records = read_activity(_claude_dir())
     window = current_window(records, now)
     state = load_state(home / "state.json")
     if window.active:
-        msg = f"skipped: block active until {window.ends_at}"
+        msg = f"skipped: block active until {_fmt(window.ends_at, tz)}"
         print(msg)
         save_state(home / "state.json", State(state.last_warmup, msg, state.next_warmup))
         return 0
@@ -114,15 +121,16 @@ def cmd_status(args) -> int:
     if cfg is None:
         print("no config found; run `warmup init` to create one")
         return 0
+    tz = _resolve_tz(cfg)
     now = datetime.now(timezone.utc)
     records = read_activity(_claude_dir())
     window = current_window(records, now)
     state = load_state(home / "state.json")
     print(f"window active: {window.active}")
-    print(f"block anchor:  {window.anchor}")
-    print(f"block ends:    {window.ends_at}")
-    print(f"last warmup:   {state.last_warmup} ({state.last_result})")
-    print(f"next warmup:   {state.next_warmup}")
+    print(f"block anchor:  {_fmt(window.anchor, tz)}")
+    print(f"block ends:    {_fmt(window.ends_at, tz)}")
+    print(f"last warmup:   {_fmt(state.last_warmup, tz)} ({state.last_result})")
+    print(f"next warmup:   {_fmt(state.next_warmup, tz)}")
     return 0
 
 

@@ -46,6 +46,53 @@ def test_resolve_tz_uses_config_timezone():
     assert _resolve_tz(cfg) == ZoneInfo("Asia/Shanghai")
 
 
+def test_status_displays_times_in_user_timezone(tmp_path: Path, monkeypatch, capsys):
+    from datetime import datetime, timezone as tz
+    from zoneinfo import ZoneInfo
+    import warmup.cli as cli
+    from warmup.window import WindowState
+
+    # Patch config timezone to Asia/Shanghai (+08:00)
+    cfg_path = tmp_path / "config.toml"
+    cfg_path.write_text(
+        default_config_toml().replace('timezone       = ""', 'timezone       = "Asia/Shanghai"'),
+        encoding="utf-8",
+    )
+    anchor_utc = datetime(2026, 6, 4, 3, 30, tzinfo=tz.utc)  # = 11:30 +08:00
+    ends_utc   = datetime(2026, 6, 4, 8, 30, tzinfo=tz.utc)  # = 16:30 +08:00
+    monkeypatch.setattr(cli, "current_window", lambda *a, **k: WindowState(True, anchor_utc, ends_utc))
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+
+    main(["status", "--home", str(tmp_path)])
+    out = capsys.readouterr().out
+    # Times must appear in Shanghai local time, not UTC (+00:00)
+    assert "+00:00" not in out
+    assert "11:30" in out  # anchor in local time
+    assert "16:30" in out  # ends_at in local time
+
+
+def test_ping_skip_message_uses_user_timezone(tmp_path: Path, monkeypatch, capsys):
+    from datetime import datetime, timezone as tz
+    from zoneinfo import ZoneInfo
+    import warmup.cli as cli
+    from warmup.window import WindowState
+
+    cfg_path = tmp_path / "config.toml"
+    cfg_path.write_text(
+        default_config_toml().replace('timezone       = ""', 'timezone       = "Asia/Shanghai"'),
+        encoding="utf-8",
+    )
+    ends_utc = datetime(2026, 6, 4, 8, 30, tzinfo=tz.utc)  # = 16:30 +08:00
+    monkeypatch.setattr(cli, "current_window", lambda *a, **k: WindowState(True, None, ends_utc))
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+    monkeypatch.setattr(cli, "save_state", lambda *a, **k: None)
+
+    main(["ping", "--home", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "+00:00" not in out
+    assert "16:30" in out
+
+
 def test_cmd_monitor_reports_scheduler_error(tmp_path: Path, monkeypatch, capsys):
     # If schtasks registration fails, monitor must report it and return non-zero,
     # NOT silently claim success.
