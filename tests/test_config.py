@@ -26,6 +26,15 @@ def test_load_config_reads_timezone(tmp_path):
     assert cfg.timezone == ""
 
 
+def test_load_config_tolerates_utf8_bom(tmp_path: Path):
+    # Editors like Notepad add a UTF-8 BOM; tomllib rejects it. We must not crash.
+    p = tmp_path / "config.toml"
+    p.write_bytes(b"\xef\xbb\xbf" + default_config_toml().encode("utf-8"))
+    cfg = load_config(p)
+    assert cfg.offset_hours == 2.5
+    assert any("Mon" in r.days for r in cfg.peaks)
+
+
 def test_peaks_for_date_filters_by_weekday():
     cfg = Config(
         enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",

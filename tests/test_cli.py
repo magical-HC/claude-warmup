@@ -44,3 +44,21 @@ def test_resolve_tz_uses_config_timezone():
         timezone="Asia/Shanghai",
     )
     assert _resolve_tz(cfg) == ZoneInfo("Asia/Shanghai")
+
+
+def test_cmd_monitor_reports_scheduler_error(tmp_path: Path, monkeypatch, capsys):
+    # If schtasks registration fails, monitor must report it and return non-zero,
+    # NOT silently claim success.
+    import warmup.cli as cli
+    from warmup.scheduler import SchedulerError
+
+    main(["init", "--home", str(tmp_path)])
+
+    def boom(*a, **k):
+        raise SchedulerError("register warmup task failed (exit 1): bad date")
+
+    monkeypatch.setattr(cli, "run_monitor", boom)
+    rc = main(["monitor", "--home", str(tmp_path)])
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "failed" in err.lower()

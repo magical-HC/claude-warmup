@@ -30,8 +30,9 @@ class Config:
 
 
 def load_config(path: Path) -> Config:
-    with open(path, "rb") as f:
-        data = tomllib.load(f)
+    # utf-8-sig tolerates an optional BOM (e.g. from Notepad); tomllib rejects a
+    # BOM if the file is parsed as raw bytes.
+    data = tomllib.loads(Path(path).read_text(encoding="utf-8-sig"))
     w = data.get("warmup", {})
     m = data.get("monitor", {})
     peaks = tuple(

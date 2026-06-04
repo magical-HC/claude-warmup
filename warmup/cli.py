@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 from warmup.config import Config, default_config_toml, load_config
 from warmup.logreader import read_activity
 from warmup.monitor import run_monitor
-from warmup.scheduler import Scheduler
+from warmup.scheduler import Scheduler, SchedulerError
 from warmup.sender import send_warmup, using_api_key
 from warmup.state import State, load_state, save_state
 from warmup.window import current_window
@@ -39,8 +39,8 @@ def _resolve_tz(config) -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
-def _ping_command() -> str:
-    return f'"{sys.executable}" -m warmup ping'
+def _ping_scheduler() -> Scheduler:
+    return Scheduler(command=sys.executable, arguments="-m warmup ping")
 
 
 def cmd_init(args) -> int:
@@ -74,9 +74,13 @@ def cmd_monitor(args) -> int:
     tz = _resolve_tz(cfg)
     now = datetime.now(timezone.utc)
     records = read_activity(_claude_dir())
-    sched = Scheduler(command=_ping_command())
+    sched = _ping_scheduler()
     state = load_state(home / "state.json")
-    new_state = run_monitor(cfg, now, records, tz, sched, state)
+    try:
+        new_state = run_monitor(cfg, now, records, tz, sched, state)
+    except SchedulerError as e:
+        print(f"ERROR: failed to schedule warmup: {e}", file=sys.stderr)
+        return 1
     save_state(home / "state.json", new_state)
     print(f"next warmup: {new_state.next_warmup}")
     return 0
