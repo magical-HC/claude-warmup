@@ -62,11 +62,17 @@ def peaks_for_date(config: Config, d: date, tz: ZoneInfo) -> list[tuple[datetime
     for rule in config.peaks:
         if not any(WEEKDAYS[day] == d.weekday() for day in rule.days):
             continue
-        start = datetime.combine(d, _parse_hhmm(rule.start), tzinfo=tz)
+        start_t = _parse_hhmm(rule.start)
+        start = datetime.combine(d, start_t, tzinfo=tz)
         if rule.end == "24:00":
             end = datetime.combine(d + timedelta(days=1), time(0, 0), tzinfo=tz)
         else:
-            end = datetime.combine(d, _parse_hhmm(rule.end), tzinfo=tz)
+            end_t = _parse_hhmm(rule.end)
+            # end < start means the segment crosses midnight into the next day
+            if end_t < start_t:
+                end = datetime.combine(d + timedelta(days=1), end_t, tzinfo=tz)
+            else:
+                end = datetime.combine(d, end_t, tzinfo=tz)
         out.append((start, end))
     return sorted(out)
 
@@ -80,10 +86,17 @@ band_minutes   = 15
 warmup_prompt  = "ping"
 model          = "haiku"
 dry_run        = false
-timezone       = ""      # IANA name e.g. "Asia/Shanghai"; empty = system local
+timezone       = ""      # IANA name e.g. "Asia/Shanghai"; empty = auto-detect
 
 [monitor]
 interval_minutes = 15
+
+# Peak segments: when are you actively using Claude?
+# The tool schedules a warmup before each segment so the 5-hour window
+# resets mid-segment. Supported end formats:
+#   "HH:MM"              same-day end          e.g. end = "20:00"
+#   "24:00"              exactly midnight
+#   "HH:MM" (end<start)  crosses midnight       e.g. start = "20:00", end = "01:00"
 
 [[peak]]
 days  = ["Mon","Tue","Wed","Thu","Fri"]

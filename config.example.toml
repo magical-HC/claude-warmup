@@ -1,14 +1,26 @@
 [warmup]
 enabled        = true
-offset_hours   = 2.5
-band_minutes   = 15
+offset_hours   = 2.5     # reset lands this far into each peak (hours)
+band_minutes   = 15      # skip warmup if natural reset already within ±this of ideal
 warmup_prompt  = "ping"
 model          = "haiku"
 dry_run        = false
-timezone       = ""      # IANA name e.g. "Asia/Shanghai"; empty = system local
+timezone       = ""      # IANA name e.g. "Asia/Shanghai"; empty = auto-detect
 
 [monitor]
 interval_minutes = 15
+
+# ── Peak segments ──────────────────────────────────────────────────────────────
+# Each [[peak]] block defines one active work period. The tool schedules a
+# warmup before each segment so the 5-hour window resets mid-segment.
+#
+# Supported end-time formats:
+#   "HH:MM"  normal end time on the same day     e.g. end = "20:00"
+#   "24:00"  exactly midnight (end of day)        e.g. end = "24:00"
+#   "HH:MM"  when end < start → crosses midnight  e.g. start = "20:00", end = "01:00"
+#            (the segment runs from that day's start until next day's end time)
+#
+# Example — morning, afternoon, and late-night sessions:
 
 [[peak]]
 days  = ["Mon","Tue","Wed","Thu","Fri"]
@@ -20,7 +32,9 @@ days  = ["Mon","Tue","Wed","Thu","Fri"]
 start = "14:00"
 end   = "17:00"
 
+# Cross-midnight example: evening work from 20:00 to next day 01:00.
+# Set end < start to indicate a segment that crosses midnight.
 [[peak]]
-days  = ["Mon","Tue","Wed","Thu","Fri"]
+days  = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 start = "20:00"
-end   = "23:00"
+end   = "01:00"

@@ -17,6 +17,23 @@ def test_top_usage_hours_ranks_by_tokens():
     assert top == [15, 9]  # 500 then 150
 
 
+def test_covered_hours_wraps_cross_midnight():
+    cfg = Config(
+        enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",
+        model="haiku", dry_run=False, monitor_interval_minutes=15,
+        peaks=(PeakRule(days=("Mon",), start="20:00", end="01:00"),),
+    )
+    # Hours 20,21,22,23,0 should be covered; 1 should not (end is exclusive)
+    records = [_rec(22, 500), _rec(9, 400), _rec(1, 300), _rec(0, 200)]
+    msgs = peak_suggestions(records, cfg, UTC)
+    # hour 9 and hour 1 are not covered
+    assert any("09:00" in m for m in msgs)
+    assert any("01:00" in m for m in msgs)
+    # hours 22 and 0 are covered — no suggestion for them
+    assert not any("22:00" in m for m in msgs)
+    assert not any("00:00" in m for m in msgs)
+
+
 def test_peak_suggestions_handles_end_24():
     cfg = Config(
         enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",

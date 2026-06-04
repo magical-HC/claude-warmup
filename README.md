@@ -40,8 +40,39 @@ session logs to see the live window state, and schedules/cancels a one-shot
 
 ## Config
 
-See `config.example.toml`. `offset_hours` controls how far into peak the reset
-lands (default 2.5). `band_minutes` is the tolerance for skipping a redundant
-warmup (default 15). `timezone` is an IANA zone name (e.g. `"Asia/Shanghai"`);
-leave it empty only if your system locale is US-English, otherwise set it
-explicitly so peak hours resolve correctly.
+See `config.example.toml`. Key settings:
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `offset_hours` | `2.5` | How far into peak the 5-hour reset lands |
+| `band_minutes` | `15` | Skip warmup if natural reset is already within ±this of ideal |
+| `timezone` | `""` | IANA zone (e.g. `"Asia/Shanghai"`). Auto-detected on most systems; set explicitly on non-English Windows |
+
+### Defining peak segments
+
+Each `[[peak]]` block is one active work period. Supported end-time formats:
+
+```toml
+# Normal: same-day end
+[[peak]]
+days  = ["Mon","Tue","Wed","Thu","Fri"]
+start = "14:00"
+end   = "20:00"
+
+# Exactly midnight
+[[peak]]
+days  = ["Sat","Sun"]
+start = "10:00"
+end   = "24:00"
+
+# Cross-midnight: end < start means the segment runs into the next day.
+# e.g. 20:00 on Monday through 01:00 on Tuesday:
+[[peak]]
+days  = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+start = "20:00"
+end   = "01:00"
+```
+
+The `days` list controls which days the segment *starts* on. A cross-midnight
+segment always extends into the following day regardless of what days that day
+falls on.

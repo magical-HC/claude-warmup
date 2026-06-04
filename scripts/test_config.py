@@ -35,6 +35,25 @@ def test_load_config_tolerates_utf8_bom(tmp_path: Path):
     assert any("Mon" in r.days for r in cfg.peaks)
 
 
+def test_peaks_for_date_handles_cross_midnight():
+    # start=20:00, end=01:00 means 20:00 Mon → 01:00 Tue
+    cfg = Config(
+        enabled=True, offset_hours=2.5, band_minutes=15, warmup_prompt="ping",
+        model="haiku", dry_run=False, monitor_interval_minutes=15,
+        peaks=(PeakRule(days=("Mon",), start="20:00", end="01:00"),),
+    )
+    tz = ZoneInfo("Asia/Shanghai")
+    from datetime import date
+    segs = peaks_for_date(cfg, date(2026, 6, 1), tz)  # Monday
+    assert len(segs) == 1
+    start, end = segs[0]
+    assert start.day == 1 and start.hour == 20
+    assert end.day == 2 and end.hour == 1   # next day
+    # Tuesday should also produce its own segment (each day owns its crossing segment)
+    segs_tue = peaks_for_date(cfg, date(2026, 6, 2), tz)  # Tuesday, days=["Mon"] only
+    assert segs_tue == []
+
+
 def test_peaks_for_date_handles_end_24():
     # "24:00" is valid notation for midnight (end of day); it must not crash
     # and the resulting end datetime must be the next day at 00:00.
