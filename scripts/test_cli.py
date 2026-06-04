@@ -130,6 +130,43 @@ def test_ping_skip_message_uses_user_timezone(tmp_path: Path, monkeypatch, capsy
     assert "16:30" in out
 
 
+def test_monitor_writes_log(tmp_path: Path, monkeypatch, capsys):
+    import warmup.cli as cli
+    from warmup.window import WindowState
+
+    main(["init", "--home", str(tmp_path)])
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+    monkeypatch.setattr(cli, "current_window",
+                        lambda *a, **k: WindowState(False, None, None))
+    monkeypatch.setattr(cli, "_ping_scheduler", lambda: type("S", (), {
+        "register_ping": lambda self, t: None,
+        "cancel_ping": lambda self: None,
+    })())
+
+    main(["monitor", "--home", str(tmp_path)])
+
+    log_path = tmp_path / "warmup.log"
+    assert log_path.exists(), "log file should be created on monitor run"
+    content = log_path.read_text(encoding="utf-8")
+    assert "monitor" in content.lower()
+
+
+def test_status_shows_recent_log(tmp_path: Path, monkeypatch, capsys):
+    import warmup.cli as cli
+    from warmup.window import WindowState
+    from warmup.log import append_log
+
+    main(["init", "--home", str(tmp_path)])
+    append_log(tmp_path / "warmup.log", "monitor  window=inactive  next=none")
+    monkeypatch.setattr(cli, "read_activity", lambda *a: [])
+    monkeypatch.setattr(cli, "current_window",
+                        lambda *a, **k: WindowState(False, None, None))
+
+    main(["status", "--home", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "monitor" in out.lower()
+
+
 def test_cmd_monitor_reports_scheduler_error(tmp_path: Path, monkeypatch, capsys):
     # If schtasks registration fails, monitor must report it and return non-zero,
     # NOT silently claim success.

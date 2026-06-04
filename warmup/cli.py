@@ -15,6 +15,7 @@ from warmup.sender import send_warmup, using_api_key
 from warmup.state import State, load_state, save_state
 from warmup.window import current_window
 from warmup.advisor import peak_suggestions
+from warmup.log import append_log, read_log
 
 
 def _home(args) -> Path:
@@ -119,11 +120,15 @@ def cmd_monitor(args) -> int:
     records = read_activity(_claude_dir())
     sched = _ping_scheduler()
     state = load_state(home / "state.json")
+    log = home / "warmup.log"
     try:
         new_state = run_monitor(cfg, now, records, tz, sched, state)
     except SchedulerError as e:
+        append_log(log, f"monitor  ERROR: {e}")
         print(f"ERROR: failed to schedule warmup: {e}", file=sys.stderr)
         return 1
+    next_str = _fmt(new_state.next_warmup, tz) if new_state.next_warmup else "none"
+    append_log(log, f"monitor  next={next_str}")
     save_state(home / "state.json", new_state)
     print(f"next warmup: {_fmt(new_state.next_warmup, tz)}")
     return 0
@@ -168,6 +173,11 @@ def cmd_status(args) -> int:
     print(f"block ends:    {_fmt(window.ends_at, tz)}")
     print(f"last warmup:   {_fmt(state.last_warmup, tz)} ({state.last_result})")
     print(f"next warmup:   {_fmt(state.next_warmup, tz)}")
+    lines = read_log(home / "warmup.log", n=5)
+    if lines:
+        print("\nrecent monitor log:")
+        for line in lines:
+            print(f"  {line}")
     return 0
 
 
