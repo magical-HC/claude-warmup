@@ -171,11 +171,14 @@ def cmd_ping(args) -> int:
     records = read_activity(_claude_dir())
     window = current_window(records, now)
     state = load_state(home / "state.json")
-    if window.active:
+    test_mode = getattr(args, "test", False)
+    if window.active and not test_mode:
         msg = f"skipped: block active until {_fmt(window.ends_at, tz)}"
         print(msg)
         save_state(home / "state.json", State(state.last_warmup, msg, state.next_warmup, state.paused))
         return 0
+    if test_mode:
+        print(f"[test] sending ping (ignoring active block)...")
     result = send_warmup(cfg.warmup_prompt, cfg.model, cfg.dry_run, cfg.claude_path)
     detail = "ok" if result.ok else f"failed: {result.detail}"
     print(f"warmup {detail}")
@@ -283,6 +286,9 @@ def build_parser() -> argparse.ArgumentParser:
     ]:
         sp = sub.add_parser(name)
         sp.add_argument("--home", default=argparse.SUPPRESS, help="config/state directory")
+        if name == "ping":
+            sp.add_argument("--test", action="store_true",
+                            help="send ping immediately, bypassing block-active check")
         sp.set_defaults(func=fn)
     return parser
 
