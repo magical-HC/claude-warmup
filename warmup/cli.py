@@ -176,7 +176,7 @@ def cmd_ping(args) -> int:
         print(msg)
         save_state(home / "state.json", State(state.last_warmup, msg, state.next_warmup, state.paused))
         return 0
-    result = send_warmup(cfg.warmup_prompt, cfg.model, cfg.dry_run)
+    result = send_warmup(cfg.warmup_prompt, cfg.model, cfg.dry_run, cfg.claude_path)
     detail = "ok" if result.ok else f"failed: {result.detail}"
     print(f"warmup {detail}")
     save_state(home / "state.json", State(now, detail, state.next_warmup, state.paused))

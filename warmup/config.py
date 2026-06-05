@@ -27,6 +27,7 @@ class Config:
     monitor_interval_minutes: int
     peaks: tuple[PeakRule, ...]
     timezone: str = ""
+    claude_path: str = ""
 
 
 def load_config(path: Path) -> Config:
@@ -49,6 +50,7 @@ def load_config(path: Path) -> Config:
         monitor_interval_minutes=int(m.get("interval_minutes", 15)),
         peaks=peaks,
         timezone=str(w.get("timezone", "")),
+        claude_path=str(w.get("claude_path", "")),
     )
 
 
@@ -87,6 +89,7 @@ warmup_prompt  = "ping"
 model          = "haiku"
 dry_run        = false
 timezone       = ""      # IANA name e.g. "Asia/Shanghai"; empty = auto-detect
+claude_path    = ""      # full path to claude CLI; empty = auto-detect
 
 [monitor]
 interval_minutes = 15
